@@ -4,25 +4,36 @@ from rqalpha import run_func
 import numpy as np
 import math
 import allFunc as myfunc
-
-
+import csv
+import pandas as pd
 # 在这个方法中编写任何的初始化逻辑。context对象将会在你的算法策略的任何方法之间做传递。
 def init(context):
-    context.s1 = "000001.XSHE"
+    context.s1 = '600005.XSHG'
 
     # 使用MACD需要设置长短均线和macd平均线的参数
     context.SHORTPERIOD = 12
     context.LONGPERIOD = 26
     context.SMOOTHPERIOD = 9
-    context.OBSERVATION = 200
+    context.OBSERVATION = 100
+    f = open('/Users/keli/Downloads/demo/' + context.s1 + '.csv', 'w')
+    f.write('date')
+    f.write(',')
+    f.write('rq_adjusted_price')
+    f.write(',')
+    f.write('unadjusted_price')
+    f.write('\n')
 
-
+    context.file = f
+    context.stock_history = pd.read_csv('/Users/keli/Documents/Quant/Stock_data/股票历史行情', sep='|')
 
 # 你选择的证券的数据更新将会触发此段逻辑，例如日或分钟历史数据切片或者是实时数据切片更新
 def handle_bar(context, bar_dict):
     # 开始编写你的主要的算法逻辑
 
-    # bar_dict[order_book_id] 可以拿到某个证券的bar信息
+    # current_date = bar_dict[context.s1].datetime.strftime('%Y-%m-%d')  # 可以拿到某个证券的bar信息
+
+    #
+    # exit(0)
     # context.portfolio 可以拿到现在的投资组合状态信息
 
     # 使用order_shares(id_or_ins, amount)方法进行落单
@@ -30,8 +41,24 @@ def handle_bar(context, bar_dict):
     # TODO: 开始编写你的算法吧！
 
     # 读取历史数据，使用sma方式计算均线准确度和数据长度无关，但是在使用ema方式计算均线时建议将历史数据窗口适当放大，结果会更加准确,OBSERVATION >=200
-    prices = history_bars(context.s1, context.OBSERVATION, '1d', 'close',)
-    # print (prices)
+    prices = history_bars(context.s1, context.OBSERVATION, '1d', ['datetime', 'close'])
+    # get_price(context.s1, start_date, end_date=None, frequency='1d', fields='close', adjust_type='pre',
+    #           skip_suspended=False)
+    for price in prices:
+        curDate = str(price['datetime'])[:4] + '-' + str(price['datetime'])[4:6] + '-' + str(price['datetime'])[6:8]
+        unadjusted_price = (context.stock_history.loc[(context.stock_history['stock_code'] == context.s1) & (
+        context.stock_history['date'] == curDate)]['close'].values)[0]
+        context.file.write(curDate)
+        context.file.write(',')
+        context.file.write(str(price['close']))
+        context.file.write(',')
+        context.file.write(str(unadjusted_price))
+        context.file.write('\n')
+
+    prices = prices['close']
+    # with open('/Users/keli/Documents/Quant/600000.XSHG', 'w') as file:
+    #         csv.writer(file).writerows(prices)
+    # exit(0)
     # print (len(prices))
 
 
@@ -54,7 +81,7 @@ def handle_bar(context, bar_dict):
 
     # exit(0)
 
-    #use my functions
+    # use my functions
     # macd, signal, hist =  myfunc.MACD(prices, context.SHORTPERIOD, context.LONGPERIOD, context.SMOOTHPERIOD)
 
 
@@ -77,11 +104,13 @@ def handle_bar(context, bar_dict):
         # 满仓入股
         order_target_percent(context.s1, 1)
 
+    print(context.portfolio.daily_pnl)
+
 
 config = {
     "base": {
-        "start_date": "2016-06-15",
-        "end_date": "2016-06-15",
+        "start_date": "2011-06-27",
+        "end_date": "2011-06-27",
         "benchmark": "000001.XSHG",
         "accounts": {
             "stock": 100000
